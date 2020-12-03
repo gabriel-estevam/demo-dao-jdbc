@@ -4,7 +4,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import db.DB;
 import db.DbException;
@@ -61,7 +64,7 @@ public class SellerDaoJDBC implements SellerDao{
 			if(rs.next())
 			{
 				Department dep = instantiateDepartment(rs);
-				Seller obj = instantiateDepartment(rs, dep);
+				Seller obj = instantiateSeller(rs, dep);
 				return obj;
 			}
 			return null;
@@ -80,7 +83,7 @@ public class SellerDaoJDBC implements SellerDao{
 		}
 	}
 
-	private Seller instantiateDepartment(ResultSet rs, Department dep) throws SQLException 
+	private Seller instantiateSeller(ResultSet rs, Department dep) throws SQLException 
 	{
 		Seller obj = new Seller();
 		obj.setId(rs.getInt("Id"));
@@ -104,6 +107,62 @@ public class SellerDaoJDBC implements SellerDao{
 	public List<Seller> findAll() {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public List<Seller> findByDepartment(Department department) 
+	{
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		try
+		{
+			st = conn.prepareStatement(" SELECT seller.*, department.Name as DepName " 
+					+ 
+					" FROM seller INNER JOIN department " 
+					+ 
+					" ON seller.DepartmentId = department.Id " 
+					+ 
+					" WHERE DepartmentId = ? " 
+					+ 
+					" ORDER BY Name; ");
+			st.setInt(1, department.getId());
+			rs = st.executeQuery();
+			
+			List<Seller> list = new ArrayList<>();
+			Map<Integer, Department> map = new HashMap<>(); 
+			while(rs.next()) {
+				Department dep = map.get(rs.getInt("DepartmentId"));
+				
+				if(dep == null) {
+					//essa bloco contra a instancia da classe department, para não ter que ficar instanciando para cada seller
+					//so vai instanciar um department quando ele for nulo, isto é ainda não tenha sido instanciado antes
+					dep = instantiateDepartment(rs);
+					map.put(rs.getInt("DepartmentId"), dep);
+				}
+				
+				Seller obj = instantiateSeller(rs, dep);
+				list.add(obj);
+				/*A estrutura de busca por id de departamento é um pouco diferente
+				 * Nesse caso um departamento pode de 0 ou n Seller, portanto 
+				 * a instacia do departamento deve ser feito uma vez para um
+				 * grupo de seller que nela (departamento) trabalha.
+				 * Para isso temos que controlar a instancia do departamento
+				 * visto que, vamos ter uma estrutura que vai verificar quando 
+				 * ja tiver uma instancia para um determinado departemento
+				 * 
+				 * Nesse caso, a forma que desenvolvemos ultilza um hash map
+				 * onde ele vai verificar quando um departamento ja foi instanciado
+				 * 
+				 * Por exemplo, caso uma instancia departamento não tenho sido instanciado
+				 * ele retorna null, é ai que devemos instanciar
+				 * */
+			}
+			return list;
+		}
+		catch(SQLException e)
+		{
+			throw new DbException(e.getMessage());
+		}
 	}
 
 }
