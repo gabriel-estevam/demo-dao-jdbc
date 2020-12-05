@@ -72,9 +72,34 @@ public class SellerDaoJDBC implements SellerDao{
 	}
 
 	@Override
-	public void update(Seller obj) {
-		// TODO Auto-generated method stub
+	public void update(Seller obj) 
+	{
+		PreparedStatement st = null;
 		
+		try 
+		{
+			st = conn.prepareStatement(
+					"UPDATE seller "
+					+ " SET Name = ?, Email = ?, BirthDate = ?, BaseSalary = ?, DepartmentId = ? " 
+					+ " WHERE id = ?" 
+					);
+			st.setString(1, obj.getName());
+			st.setString(2, obj.getEmail());
+			st.setDate(3, new java.sql.Date(obj.getBirthDate().getTime()));
+			st.setDouble(4, obj.getBaseSalary());
+			st.setInt(5, obj.getDepartment().getId());
+			st.setInt(6, obj.getId());
+			
+			st.executeUpdate();
+		}
+		catch(SQLException e)
+		{
+			throw new DbException(e.getMessage());
+		}
+		finally
+		{
+			DB.closeStatement(st);
+		}
 	}
 
 	@Override
@@ -214,7 +239,8 @@ public class SellerDaoJDBC implements SellerDao{
 			while(rs.next()) {
 				Department dep = map.get(rs.getInt("DepartmentId"));
 				
-				if(dep == null) {
+				if(dep == null)
+				{
 					//essa bloco contra a instancia da classe department, para não ter que ficar instanciando para cada seller
 					//so vai instanciar um department quando ele for nulo, isto é ainda não tenha sido instanciado antes
 					dep = instantiateDepartment(rs);
@@ -223,8 +249,9 @@ public class SellerDaoJDBC implements SellerDao{
 				
 				Seller obj = instantiateSeller(rs, dep);
 				list.add(obj);
+				
 				/*A estrutura de busca por id de departamento é um pouco diferente
-				 * Nesse caso um departamento pode de 0 ou n Seller, portanto 
+				 * Nesse caso um departamento pode ter 0 ou N Seller, portanto 
 				 * a instacia do departamento deve ser feito uma vez para um
 				 * grupo de seller que nela (departamento) trabalha.
 				 * Para isso temos que controlar a instancia do departamento
